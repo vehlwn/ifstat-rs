@@ -100,7 +100,7 @@ fn parse_stat_db(path: &str) -> Result<StatisticsDb, Box<dyn std::error::Error>>
 }
 
 fn is_file_exist(path: &str) -> bool {
-    return std::fs::File::open(path).is_ok();
+    return std::path::Path::new(path).is_file();
 }
 
 fn get_human_value<'a>(
