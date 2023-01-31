@@ -23,7 +23,7 @@ impl std::ops::Sub<DeviceStatistics> for DeviceStatistics {
 
 type DeviceRates = std::collections::BTreeMap<String, DeviceStatistics>;
 
-#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct StatisticsDb {
     timestamp: chrono::DateTime<chrono::Utc>,
     devices: DeviceRates,
