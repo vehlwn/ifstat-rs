@@ -47,11 +47,7 @@ fn parse_proc_net_dev() -> anyhow::Result<StatisticsDb> {
     for line in buf_reader.lines().skip(2).filter_map(|x| x.ok()) {
         let mut split = line.split_ascii_whitespace();
         let ifname = match split.next() {
-            Some(x) => {
-                let mut tmp = x.to_string();
-                tmp.pop();
-                tmp
-            }
+            Some(x) => x.trim_end_matches(':').to_string(),
             None => return Err(anyhow::anyhow!("Missing interface name").into()),
         };
         let rx = match split.next() {
