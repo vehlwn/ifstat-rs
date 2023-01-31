@@ -7,10 +7,10 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.66"
-chrono  = { version = "0.4.22", features = ["serde"] }
-clap  = { version = "4.0.22", features = ["derive"] }
-env_logger = "0.9.3"
+anyhow = "1.0"
+chrono  = { version = "0.4.23", features = ["serde"] }
+clap  = { version = "4.1.4", features = ["derive"] }
+env_logger = "0.10.0"
 log = "0.4.17"
-serde  = { version = "1.0.147", features = ["derive"] }
-serde_json = "1.0.87"
+serde  = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
