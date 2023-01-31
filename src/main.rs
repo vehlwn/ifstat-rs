@@ -106,12 +106,14 @@ fn get_human_value<'a>(
 ) -> (f64, &'a str) {
     let mut new_value = value;
     let mut new_prefix = "";
-    for p in prefixes {
-        if new_value <= factor {
-            break;
+    if value.is_finite() {
+        for p in prefixes {
+            if new_value <= factor {
+                break;
+            }
+            new_value /= factor;
+            new_prefix = p;
         }
-        new_value /= factor;
-        new_prefix = p;
     }
     return (new_value, new_prefix);
 }
