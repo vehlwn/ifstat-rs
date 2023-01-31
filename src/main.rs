@@ -48,15 +48,15 @@ fn parse_proc_net_dev() -> anyhow::Result<StatisticsDb> {
         let mut split = line.split_ascii_whitespace();
         let ifname = match split.next() {
             Some(x) => x.trim_end_matches(':').to_string(),
-            None => return Err(anyhow::anyhow!("Missing interface name").into()),
+            None => return Err(anyhow::anyhow!("Missing interface name")),
         };
         let rx = match split.next() {
             Some(x) => x.parse::<u64>().context("Failed to parse rx bytes")?,
-            None => return Err(anyhow::anyhow!("Missing rx bytes").into()),
+            None => return Err(anyhow::anyhow!("Missing rx bytes")),
         };
         let tx = match split.skip(7).next() {
             Some(x) => x.parse::<u64>().context("Failed to parse tx bytes")?,
-            None => return Err(anyhow::anyhow!("Missing tx bytes").into()),
+            None => return Err(anyhow::anyhow!("Missing tx bytes")),
         };
         ret.devices.insert(ifname, DeviceStatistics { rx, tx });
     }
