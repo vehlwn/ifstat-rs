@@ -38,7 +38,7 @@ impl StatisticsDb {
 
 const PROC_NET_DEV_PATH: &str = "/proc/net/dev";
 
-fn parse_proc_net_dev() -> anyhow::Result<StatisticsDb> {
+fn parse_proc_net_dev(hide_zero_ifs: bool) -> anyhow::Result<StatisticsDb> {
     let mut ret = StatisticsDb::new();
     let buf_reader = std::io::BufReader::new(
         std::fs::File::open(PROC_NET_DEV_PATH)
@@ -58,6 +58,10 @@ fn parse_proc_net_dev() -> anyhow::Result<StatisticsDb> {
             Some(x) => x.parse::<u64>().context("Failed to parse tx bytes")?,
             None => return Err(anyhow::anyhow!("Missing tx bytes")),
         };
+        if hide_zero_ifs && rx.max(tx) == 0 {
+            log::debug!("Interface '{ifname}' has zero statistics. Ignoring");
+            continue;
+        }
         ret.devices.insert(ifname, DeviceStatistics { rx, tx });
     }
     return Ok(ret);
@@ -157,6 +161,10 @@ struct Cli {
     /// Name of a history file
     #[arg(short = 'f', long)]
     history_file: String,
+
+    /// Hide interfaces with zero statistics
+    #[arg(long)]
+    hide_zero_ifs: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -168,7 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if is_file_exist(&args.history_file) {
         log::debug!("File `{}` exists", args.history_file);
         let a = parse_stat_db(&args.history_file)?;
-        let b = parse_proc_net_dev().with_context(|| {
+        let b = parse_proc_net_dev(args.hide_zero_ifs).with_context(|| {
             format!("Failed to parse {} file", PROC_NET_DEV_PATH)
         })?;
         let diff = subtract_device_rates(&b.devices, &a.devices);
@@ -182,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pretty_print_devices_speed(&diff, interval);
     } else {
         log::debug!("File `{}` does not exist", args.history_file);
-        let a = parse_proc_net_dev().with_context(|| {
+        let a = parse_proc_net_dev(args.hide_zero_ifs).with_context(|| {
             format!("Failed to parse {} file", PROC_NET_DEV_PATH)
         })?;
         dump_stat_db(&args.history_file, &a)
