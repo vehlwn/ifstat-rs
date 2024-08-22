@@ -21,7 +21,7 @@ impl std::ops::Sub<DeviceStatistics> for DeviceStatistics {
     }
 }
 
-type DeviceRates = std::collections::BTreeMap<String, DeviceStatistics>;
+type DeviceRates = std::collections::HashMap<String, DeviceStatistics>;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct StatisticsDb {
@@ -141,10 +141,27 @@ fn make_repeated_string(c: char, n: usize) -> String {
     return std::iter::repeat(c).take(n).collect();
 }
 
+fn get_sorted_ifs(db: &StatisticsDb, sort_by_stat: bool) -> Vec<String> {
+    let mut v: Vec<(String, DeviceStatistics)> = db
+        .devices
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    if sort_by_stat {
+        v.sort_by_key(|(_, v)| v.rx + v.tx);
+        v.reverse();
+    } else {
+        v.sort_by_key(|(k, _)| k.clone());
+    }
+    return v.iter().map(|(k, _)| k).cloned().collect();
+}
+
 fn pretty_print_devices_speed(
     diff: &DeviceRates,
+    db: &StatisticsDb,
     seconds: f64,
     hide_zero_values: bool,
+    sort_by_stat: bool,
 ) {
     let number_width = 30;
     let ifname_width = diff.keys().map(|x| x.len()).max().unwrap_or(0).max(10);
@@ -152,7 +169,12 @@ fn pretty_print_devices_speed(
         "{:>ifname_width$} {:^number_width$} {:^number_width$}",
         "Interface", "Receive", "Transmit"
     );
-    for (ifname, stat) in diff.iter() {
+    let sorted_ifs = get_sorted_ifs(&db, sort_by_stat);
+    for ifname in sorted_ifs {
+        let stat = match diff.get(&ifname) {
+            Some(x) => x,
+            None => continue,
+        };
         print!("{:>ifname_width$}", ifname);
         for col in [stat.rx, stat.tx] {
             if hide_zero_values && col == 0 {
@@ -182,6 +204,10 @@ struct Cli {
     /// Hide zeros from fields
     #[arg(long)]
     hide_zero_values: bool,
+
+    /// Sort devices by total statistics instead of alphabetically
+    #[arg(long)]
+    sort_by_stat: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -204,7 +230,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .context("Duration is negative!")?
             .as_secs_f64();
         log::debug!("Interval = {} s", interval);
-        pretty_print_devices_speed(&diff, interval, args.hide_zero_values);
+        pretty_print_devices_speed(
+            &diff,
+            &b,
+            interval,
+            args.hide_zero_values,
+            args.sort_by_stat,
+        );
     } else {
         log::debug!("File `{}` does not exist", args.history_file);
         let a = parse_proc_net_dev(args.hide_zero_ifs).with_context(|| {
@@ -212,7 +244,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
         dump_stat_db(&args.history_file, &a)
             .context("Failed to update statistics db")?;
-        pretty_print_devices_speed(&a.devices, 0_f64, args.hide_zero_values);
+        pretty_print_devices_speed(
+            &a.devices,
+            &a,
+            0_f64,
+            args.hide_zero_values,
+            args.sort_by_stat,
+        );
     }
 
     return Ok(());
