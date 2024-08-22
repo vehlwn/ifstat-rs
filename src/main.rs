@@ -21,7 +21,7 @@ impl std::ops::Sub<DeviceStatistics> for DeviceStatistics {
     }
 }
 
-type DeviceRates = std::collections::HashMap<String, DeviceStatistics>;
+type DeviceRates = std::collections::BTreeMap<String, DeviceStatistics>;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct StatisticsDb {
