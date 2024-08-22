@@ -137,7 +137,15 @@ fn pretty_print_bytes_and_bites(value: f64, width: usize) {
     print!(" {:>width$}", combined);
 }
 
-fn pretty_print_devices_speed(diff: &DeviceRates, seconds: f64) {
+fn make_repeated_string(c: char, n: usize) -> String {
+    return std::iter::repeat(c).take(n).collect();
+}
+
+fn pretty_print_devices_speed(
+    diff: &DeviceRates,
+    seconds: f64,
+    hide_zero_values: bool,
+) {
     let number_width = 30;
     let ifname_width = diff.keys().map(|x| x.len()).max().unwrap_or(0).max(10);
     println!(
@@ -145,9 +153,14 @@ fn pretty_print_devices_speed(diff: &DeviceRates, seconds: f64) {
         "Interface", "Receive", "Transmit"
     );
     for (ifname, stat) in diff.iter() {
-        print!("{:>ifname_width$}", ifname,);
-        pretty_print_bytes_and_bites(stat.rx as f64 / seconds, number_width);
-        pretty_print_bytes_and_bites(stat.tx as f64 / seconds, number_width);
+        print!("{:>ifname_width$}", ifname);
+        for col in [stat.rx, stat.tx] {
+            if hide_zero_values && col == 0 {
+                print!(" {}", make_repeated_string(' ', number_width));
+            } else {
+                pretty_print_bytes_and_bites(col as f64 / seconds, number_width);
+            }
+        }
         println!();
     }
 }
@@ -165,6 +178,10 @@ struct Cli {
     /// Hide interfaces with zero statistics
     #[arg(long)]
     hide_zero_ifs: bool,
+
+    /// Hide zeros from fields
+    #[arg(long)]
+    hide_zero_values: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -187,7 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .context("Duration is negative!")?
             .as_secs_f64();
         log::debug!("Interval = {} s", interval);
-        pretty_print_devices_speed(&diff, interval);
+        pretty_print_devices_speed(&diff, interval, args.hide_zero_values);
     } else {
         log::debug!("File `{}` does not exist", args.history_file);
         let a = parse_proc_net_dev(args.hide_zero_ifs).with_context(|| {
@@ -195,7 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
         dump_stat_db(&args.history_file, &a)
             .context("Failed to update statistics db")?;
-        pretty_print_devices_speed(&a.devices, 0_f64);
+        pretty_print_devices_speed(&a.devices, 0_f64, args.hide_zero_values);
     }
 
     return Ok(());
